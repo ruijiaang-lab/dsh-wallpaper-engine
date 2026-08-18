@@ -192,6 +192,10 @@ instead of Steam-driven. It scans content folders and treats every `.mp4`/`.webm
   - `main` — the full distribution branch: the upstream Windows implementation
     with the macOS adaptations merged in. This is what the DSH plugin market installs.
   - `mac` — the maintained macOS development branch (source of the upstream PR).
+- **npm** — the macOS line publishes under its own package name
+  `dsh-plugin-wallpaper-engine-mac` (the upstream `dsh-plugin-wallpaper-engine`
+  name stays with elysia395). Release: bump `package.json` version, then
+  `node scripts/npm-publish.mjs`.
 
 ## Limitations
 

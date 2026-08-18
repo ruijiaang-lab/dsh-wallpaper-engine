@@ -156,6 +156,7 @@ Wallpaper Engine 没有 macOS 客户端，所以 macOS 上本插件是**目录�
 - [ruijiaang-lab fork](https://github.com/ruijiaang-lab/dsh-wallpaper-engine)：
   - `main` — 完整分发分支：上游 Windows 实现 + 已合并的 macOS 适配，DSH 插件市场安装的就是它。
   - `mac` — 持续维护的 macOS 开发分支（上游 PR 的源）。
+- **npm** — macOS 分支以独立包名 `dsh-plugin-wallpaper-engine-mac` 发布（不占用上游的 `dsh-plugin-wallpaper-engine` 包名）。发新版：改 `package.json` 版本号 → 运行 `node scripts/npm-publish.mjs`。
 
 ## 已知限制
 
