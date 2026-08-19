@@ -1,10 +1,20 @@
 # dsh-plugin-wallpaper-engine
 
-[English](README.md) | [中文](README.zh.md)
+[English](README.en.md) | [中文](README.md)
 
 A DSH bundle that turns your **Wallpaper Engine** wallpapers into the **background of the DSH web GUI** (`dsh web`).
 
-It discovers the Wallpaper Engine install on your machine, lists its wallpapers, and renders the *portable* ones (Video `.mp4` and Web/HTML) behind the DSH chat interface with an iOS-style **liquid glass** effect. You pick the wallpaper from a settings row, fine-tune it with four sliders, and pause/clear it anytime.
+It discovers the Wallpaper Engine install on your machine, lists its wallpapers, and renders the *portable* ones (Video `.mp4` and Web/HTML) behind the DSH chat interface with an iOS-style **liquid glass** effect. Since v0.2 it also adds:
+
+- **Modal wallpaper picker** — the thumbnail grid lives in a popup modal, so the settings page stays compact;
+- **Hide / restore (soft delete)** — hide wallpapers you don't want, restore them anytime; no source files are touched;
+- **Playback speed** — six native presets from 0.5x to 2x, instant, no media reload;
+- **Horizontal flip** — mirror the image (video / web / uploaded images);
+- **Custom uploads** — use your own local JPG / PNG / MP4 as a wallpaper, with a configurable storage location and fit modes.
+
+![Wallpaper showcase](docs/images/showcase.png)
+
+> Wallpaper + scrim + iOS liquid glass rendered behind the DSH GUI.
 
 ## Why only Video and Web wallpapers?
 
@@ -34,9 +44,17 @@ rotation candidates — they cannot be used as a live background here.
      - `GET /wallpaper-engine/inventory` → JSON list of wallpapers
      - `GET /wallpaper-engine/media/<token>` → video / HTML (Range supported)
      - `GET /wallpaper-engine/preview/<token>` → preview image
+     - `POST /wallpaper-engine/upload` → upload a custom wallpaper (JPG / PNG / MP4, raw bytes)
+     - `POST /wallpaper-engine/remove` → remove an uploaded wallpaper
+     - `POST /wallpaper-engine/upload-dir` → change the upload directory (persisted to `~/.dsh-wallpaper-engine/config.json`, migrates existing files)
 - **Client half** (`lib/client.js`): a browser module that fetches the inventory
   and renders the selected wallpaper into a fixed layer *behind* the app columns,
-  plus a "Wallpaper Engine" row in General settings with a picker.
+  plus a "Wallpaper Engine" row in General settings (picker modal, hide/restore,
+  playback speed / flip, and custom-upload management).
+- **Custom-upload storage**: uploaded files are written to a plugin-managed local
+  directory (default `~/.dsh-wallpaper-engine/uploads`, changeable from the
+  settings UI) and served through the same `/media` + `/preview` routes as WE
+  media — identical pipeline, survives restarts, no browser quota limits.
 
 ## Install
 
@@ -49,6 +67,16 @@ dsh plugin --profile web add dsh-plugin-wallpaper-engine
 ```
 
 Then restart `dsh web` and open **Settings → General → Wallpaper Engine**.
+
+> **macOS users**: Wallpaper Engine has no macOS client. The macOS line of this
+> plugin (WaifuX + loose-media support) is maintained by Jerry and published as
+> a separate npm package:
+>
+> ```sh
+> dsh plugin --profile web add dsh-plugin-wallpaper-engine-mac
+> ```
+>
+> Repo: https://github.com/ruijiaang-lab/dsh-wallpaper-engine
 
 ### For developers (running your own copy)
 
@@ -117,10 +145,36 @@ via `libraryfolders.vdf`. Nothing further is required.
 
 1. Open `dsh web` → the DSH GUI.
 2. Open **Settings → General** and find the **Wallpaper Engine** row.
-3. Pick a Video or Web wallpaper from the thumbnail grid. It appears behind the app (Scene/Application wallpapers cannot be embedded in the web UI and are hidden from the grid).
+3. Click **选择壁纸** to open the picker modal, then click a Video/Web wallpaper (or an uploaded image/video) in the thumbnail grid. It appears behind the app; close the modal via the backdrop, ESC, or the close button. Scene/Application wallpapers cannot be embedded in the web UI and are hidden from the grid.
 4. Use **暂停/播放** to pause a video wallpaper, and **关闭** to clear it.
    The choice is remembered in your browser's `localStorage` (key
    `dsh-wallpaper-engine:selection`).
+
+![Settings UI overview](docs/images/features.png)
+
+> The settings panel: the current-wallpaper card plus the 自定义壁纸 / 轮播列表 / 壁纸效果 sections.
+
+![Wallpaper picker modal](docs/images/wallpaper-library.png)
+
+> The picker modal: browse every wallpaper thumbnail, batch-hide, and restore from the hidden tab.
+
+### Hide & restore (soft delete)
+
+Every wallpaper card has a **隐藏** button in its top-right corner — it only removes the wallpaper from the list, **never touches the source file**. Restore any wallpaper from the **已隐藏** tab in the modal (single restore or **全部恢复**); the **批量** button in the modal toolbar enters multi-select mode to hide several at once. Hidden state is persisted in `localStorage` (survives refresh/restart); hiding the currently playing wallpaper doesn't interrupt playback, and automatic rotation skips hidden wallpapers.
+
+### Playback speed & horizontal flip
+
+With a video wallpaper selected, the **壁纸效果** area shows the **倍速** presets (0.5x / 0.75x / 1x / 1.25x / 1.5x / 2x) — driven by the browser's native `playbackRate`, instant, no reload or black flash (wallpaper videos are muted, so there is no audio to keep in sync). The **水平翻转** toggle mirrors the image via CSS `scaleX(-1)` — it works for video, web, and uploaded images/videos alike, with zero main-thread cost.
+
+### Custom wallpapers
+
+The **自定义壁纸** section uploads local images (JPG / PNG) or videos (MP4) as wallpapers:
+
+- **Storage location**: files default to `~/.dsh-wallpaper-engine/uploads` (your home directory — usually the C: drive). Click **更改** to move storage to any drive (absolute path, `~` supported); existing files migrate automatically and the choice persists across restarts — recommended for users who don't want wallpaper data on the system drive.
+- **Format limit**: JPG / PNG / MP4 only; validated twice (browser + host) with a clear error message.
+- **Fit modes**: 覆盖 (cover) / 填充 (contain) / 居中 (center) / 拉伸 (fill) — applied to custom wallpapers only (WE wallpapers keep their intended cover framing).
+- **Management**: each upload can be **移除** (confirm dialog, deletes the local file); uploaded wallpapers also support hide/restore, playback speed, and flip.
+- **Deduplication**: re-uploading an identical file is detected by content (SHA-256) and returns the existing entry — no duplicate copies pile up in the library.
 
 ### Automatic rotation (轮播列表)
 
@@ -149,7 +203,19 @@ While a wallpaper is active, four sliders let you tune how it blends with the UI
 ## Configuration
 
 There is no model-visible tool or prompt text. The bundle adds zero tokens to the
-agent. All state is process-local/browser-local; no durable DSH settings are written.
+agent. Selection, hidden state, and rotation lists live in browser `localStorage`;
+no durable DSH settings are written. The only on-disk data is the **custom-upload
+files** (in the directory you chose) and `~/.dsh-wallpaper-engine/config.json`
+(~100 bytes) that remembers that directory.
+
+## dsh-better-sidebar compatibility
+
+The liquid-glass effect is specifically adapted for dsh-better-sidebar's panels
+(frost, specular highlight, and layer hierarchy are unified), so the sidebar and
+the conversation area share the same wallpaper + scrim background and read as one
+continuous surface.
+
+![dsh-better-sidebar compatibility](docs/images/better-sidebar.png)
 
 ## Limitations
 
@@ -160,6 +226,7 @@ agent. All state is process-local/browser-local; no durable DSH settings are wri
   autoplay is allowed by modern browsers).
 - Media is served from your local Wallpaper Engine install paths; the host only
   serves files it has already enumerated (no arbitrary filesystem exposure).
+  Custom uploads likewise stay on your machine — nothing is uploaded to any server.
 - The picker is English/Chinese mixed (this bundle is not yet wired into DSH's
   locale namespaces).
 
