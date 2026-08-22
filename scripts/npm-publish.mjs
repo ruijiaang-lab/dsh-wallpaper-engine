@@ -10,12 +10,37 @@ import { execSync } from 'node:child_process';
 
 const root = new URL('..', import.meta.url).pathname;
 const out = new URL('.npm/', import.meta.url).pathname;
+const NPM_NAME = 'dsh-plugin-wallpaper-engine-mac';
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out + 'lib', { recursive: true });
 cpSync(root + 'lib', out + 'lib', { recursive: true });
 for (const f of ['cordis.patch.yml', 'README.md', 'README.zh.md']) {
   cpSync(root + f, out + f);
+}
+
+// The repo keeps the upstream package name (dsh-plugin-wallpaper-engine) so the
+// local DSH profile's link: binding keeps working, and this script renames the
+// published package to -mac below. That rename used to stop at package.json:
+// the copied cordis.patch.yml (loader entry `name:`) and lib/client.js
+// (`__ModuleLoader__.load({ id })`) still referenced the upstream name, so the
+// published package could not boot (ERR_MODULE_NOT_FOUND) or register its
+// browser half ("bundle loaded without registering"). Rewrite both references
+// in the staging copy so the published artifact is self-consistent.
+for (const f of ['cordis.patch.yml', 'lib/client.js']) {
+  const path = out + f;
+  writeFileSync(path, readFileSync(path, 'utf8').replaceAll('dsh-plugin-wallpaper-engine', NPM_NAME));
+}
+// The READMEs ship in the -mac package, but their title and install command
+// reference the upstream name — users following the install command would get
+// the Windows package (no WaifuX support, empty inventory on macOS). Rewrite
+// only those two spots; prose that describes the upstream package keeps its
+// name (a blind replaceAll would corrupt those sentences).
+for (const f of ['README.md', 'README.zh.md']) {
+  const path = out + f;
+  writeFileSync(path, readFileSync(path, 'utf8')
+    .replace(/^# dsh-plugin-wallpaper-engine$/m, `# ${NPM_NAME}`)
+    .replaceAll('add dsh-plugin-wallpaper-engine\n', `add ${NPM_NAME}\n`));
 }
 
 const pkg = JSON.parse(readFileSync(root + 'package.json', 'utf8'));
