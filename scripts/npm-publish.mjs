@@ -31,6 +31,17 @@ for (const f of ['cordis.patch.yml', 'lib/client.js']) {
   const path = out + f;
   writeFileSync(path, readFileSync(path, 'utf8').replaceAll('dsh-plugin-wallpaper-engine', NPM_NAME));
 }
+// The READMEs ship in the -mac package, but their title and install command
+// reference the upstream name — users following the install command would get
+// the Windows package (no WaifuX support, empty inventory on macOS). Rewrite
+// only those two spots; prose that describes the upstream package keeps its
+// name (a blind replaceAll would corrupt those sentences).
+for (const f of ['README.md', 'README.zh.md']) {
+  const path = out + f;
+  writeFileSync(path, readFileSync(path, 'utf8')
+    .replace(/^# dsh-plugin-wallpaper-engine$/m, `# ${NPM_NAME}`)
+    .replaceAll('add dsh-plugin-wallpaper-engine\n', `add ${NPM_NAME}\n`));
+}
 
 const pkg = JSON.parse(readFileSync(root + 'package.json', 'utf8'));
 writeFileSync(out + 'package.json', JSON.stringify({
