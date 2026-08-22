@@ -1865,6 +1865,22 @@ const CSS = `
     --dsw-alias-border-l2: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
     --dsw-alias-border-l2-darkmode-thin: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
   }
+  /* DSH rc.7+ injects the theme palette (design-platform.css) as a plugin-owned
+     stylesheet appended to <head> AFTER this one, so in dark mode the shell's
+     body[data-ds-dark-theme] rules (equal specificity 0,1,1, later in the
+     document) win the cascade and repaint the app frame / sidebar / borders
+     with their opaque dark colors — hiding the wallpaper behind them. Repeat
+     the transparency + border-emphasis overrides under the higher-specificity
+     dark selector (0,2,1) so the wallpaper always wins regardless of
+     stylesheet order. Backport of the upstream fix shipped in
+     dsh-plugin-wallpaper-engine@0.5.1. */
+  body[data-ds-dark-theme][data-we-wallpaper] {
+    --dsw-alias-bg-base: transparent;
+    --dsw-specific-sidebar-fill: transparent;
+    --dsw-alias-border-l1: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
+    --dsw-alias-border-l2: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
+    --dsw-alias-border-l2-darkmode-thin: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
+  }
 
   /* ── Light-scheme text contrast boost ──────────────────────────────────────
      In light mode the grays (tertiary/caption/secondary) were tuned against a
